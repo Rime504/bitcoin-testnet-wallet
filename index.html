@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Bitcoin Testnet Wallet Dashboard - Generate addresses, check balances, and explore transactions">
+    <title>Bitcoin Testnet Wallet Dashboard</title>
+
+    <!-- External Libraries -->
+    <script src="https://bundle.run/bitcoinjs-lib@5.2.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #151b3d;
+            --bg-card: rgba(30, 41, 82, 0.6);
+            --accent-primary: #f7931a;
+            --accent-secondary: #4a90e2;
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            --success: #10b981;
+            --error: #ef4444;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1f3a 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(247, 147, 26, 0.2);
+            color: var(--accent-primary);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(247, 147, 26, 0.15);
+            border-color: rgba(247, 147, 26, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent-primary), #e67e00);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(247, 147, 26, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card);
+            box-shadow: 0 8px 24px rgba(74, 144, 226, 0.2);
+        }
+
+        .address-display {
+            background: var(--bg-secondary);
+            padding: 16px;
+            border-radius: 8px;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin: 16px 0;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--accent-primary);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: white;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: #e67e00;
+            transform: scale(1.05);
+        }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            padding: 16px;
+            background: white;
+            border-radius: 12px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .stat-item {
+            background: var(--bg-secondary);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--accent-primary);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tx-list {
+            margin-top: 16px;
+        }
+
+        .tx-item {
+            background: var(--bg-secondary);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .tx-item:hover {
+            border-color: var(--accent-primary);
+            transform: translateX(4px);
+        }
+
+        .tx-hash {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-secondary);
+            margin-bottom: 4px;
+        }
+
+        .tx-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .tx-amount {
+            font-weight: 600;
+        }
+
+        .tx-amount.received {
+            color: var(--success);
+        }
+
+        .tx-amount.sent {
+            color: var(--error);
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid;
+        }
+
+        .alert-info {
+            background: rgba(74, 144, 226, 0.1);
+            border-color: var(--accent-secondary);
+            color: var(--accent-secondary);
+        }
+
+        .faucet-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-secondary);
+            text-decoration: none;
+            padding: 8px 16px;
+            background: rgba(74, 144, 226, 0.1);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            margin-top: 12px;
+        }
+
+        .faucet-link:hover {
+            background: rgba(74, 144, 226, 0.2);
+            transform: translateX(4px);
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ Bitcoin Testnet Wallet</h1>
+            <p class="subtitle">Generate addresses, check balances & explore transactions</p>
+            <span class="badge">TESTNET ONLY</span>
+        </header>
+
+        <div class="alert alert-info">
+            <strong>ℹ️ Testnet Mode:</strong> This wallet uses Bitcoin Testnet. Coins have no real value and are for
+            testing only.
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🔑</div>
+                    <h2 class="card-title">Generate Wallet</h2>
+                </div>
+                <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                    Create a new P2WPKH (SegWit) testnet address
+                </p>
+                <button class="btn" onclick="generateWallet()">Generate New Address</button>
+                <div id="walletInfo" class="hidden">
+                    <div class="address-display">
+                        <button class="copy-btn" onclick="copyAddress()">Copy</button>
+                        <div id="addressText"></div>
+                    </div>
+                    <div id="qrcode"></div>
+                    <a href="https://testnet-faucet.mempool.co/" target="_blank" class="faucet-link">
+                        💰 Get Free Testnet Coins
+                    </a>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">💰</div>
+                    <h2 class="card-title">Balance</h2>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Balance</div>
+                        <div class="stat-value" id="balance">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Transactions</div>
+                        <div class="stat-value" id="txCount">-</div>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="refreshBalance()" id="refreshBtn">
+                    Refresh Balance
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">📊</div>
+                <h2 class="card-title">Recent Transactions</h2>
+            </div>
+            <div id="txList" class="tx-list">
+                <p style="color: var(--text-secondary);">Generate a wallet to view transactions</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Built with ❤️ for Summer of Bitcoin | Using bitcoinjs-lib & Blockstream API</p>
+        </footer>
+    </div>
+
+    <script>
+        let currentAddress = null;
+
+        async function generateWallet() {
+            const btcLib = window.bitcoinjsLib;
+            const qrLib = window.QRCode;
+
+            if (!btcLib || !qrLib) {
+                alert('Libraries are still loading... please wait a second and try again.');
+                return;
+            }
+
+            try {
+                const network = btcLib.networks.testnet;
+                const keyPair = btcLib.ECPair.makeRandom({ network });
+                const { address } = btcLib.payments.p2wpkh({
+                    pubkey: keyPair.publicKey,
+                    network
+                });
+
+                currentAddress = address;
+
+                document.getElementById('addressText').textContent = address;
+                document.getElementById('walletInfo').classList.remove('hidden');
+
+                const qrcodeDiv = document.getElementById('qrcode');
+                qrcodeDiv.innerHTML = '';
+                qrLib.toCanvas(address, { width: 200, margin: 2 }, (error, canvas) => {
+                    if (error) console.error(error);
+                    qrcodeDiv.appendChild(canvas);
+                });
+
+                refreshBalance();
+            } catch (error) {
+                console.error('Wallet generation error:', error);
+                alert('Error generating wallet. Check console for details.');
+            }
+        }
+
+        function copyAddress() {
+            if (!currentAddress) return;
+            navigator.clipboard.writeText(currentAddress).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                btn.style.background = 'var(--success)';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = 'var(--accent-primary)';
+                }, 2000);
+            });
+        }
+
+        async function refreshBalance() {
+            if (!currentAddress) return;
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.disabled = true;
+            try {
+                const response = await fetch(`https://blockstream.info/testnet/api/address/${currentAddress}`);
+                const data = await response.json();
+                const balanceBTC = (data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum) / 100000000;
+                document.getElementById('balance').textContent = `${balanceBTC.toFixed(8)} tBTC`;
+                document.getElementById('txCount').textContent = data.chain_stats.tx_count;
+                fetchRecentTransactions();
+            } catch (error) {
+                console.error('Balance fetch error:', error);
+            } finally {
+                refreshBtn.disabled = false;
+            }
+        }
+
+        async function fetchRecentTransactions() {
+            if (!currentAddress) return;
+            try {
+                const response = await fetch(`https://blockstream.info/testnet/api/address/${currentAddress}/txs`);
+                const txs = await response.json();
+                const txListDiv = document.getElementById('txList');
+
+                if (txs.length === 0) {
+                    txListDiv.innerHTML = '<p style="color: var(--text-secondary);">No transactions yet.</p>';
+                    return;
+                }
+
+                txListDiv.innerHTML = txs.slice(0, 5).map(tx => {
+                    let amount = 0;
+                    let type = 'received';
+                    tx.vout.forEach(o => { if (o.scriptpubkey_address === currentAddress) amount += o.value; });
+                    tx.vin.forEach(i => { if (i.prevout && i.prevout.scriptpubkey_address === currentAddress) { amount -= i.prevout.value; type = 'sent'; } });
+
+                    return `
+                        <div class="tx-item">
+                            <div class="tx-hash">${tx.txid.substring(0, 16)}...</div>
+                            <div class="tx-details">
+                                <span>${tx.status.block_time ? new Date(tx.status.block_time * 1000).toLocaleDateString() : 'Unconfirmed'}</span>
+                                <span class="tx-amount ${type}">${type === 'received' ? '+' : ''}${(amount / 100000000).toFixed(8)} tBTC</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('TX fetch error:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>
